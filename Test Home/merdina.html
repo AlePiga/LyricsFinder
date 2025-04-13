@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Cards Artisti</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0f172a; /* Navy scuro */
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .card {
+      position: relative;
+      width: 200px;
+      height: 280px;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+    }
+
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card .label {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      padding: 12px 10px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+      text-shadow: 0 1px 2px black;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="#" class="card">
+    <img src="https://link-to-your-image1.jpg" alt="Taylor Swift">
+    <div class="label">Taylor Swift</div>
+  </a>
+
+  <a href="#" class="card">
+    <img src="https://link-to-your-image2.jpg" alt="Adele">
+    <div class="label">Adele</div>
+  </a>
+
+  <a href="#" class="card">
+    <img src="https://link-to-your-image3.jpg" alt="Arctic Monkeys">
+    <div class="label">Arctic Monkeys</div>
+  </a>
+
+</body>
+</html>

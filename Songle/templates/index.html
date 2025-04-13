@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indovina la Canzone</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1DB954;
+            text-align: center;
+        }
+        .lyrics {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-style: italic;
+            line-height: 1.6;
+            min-height: 100px;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #1DB954;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1ed760;
+        }
+        .score {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .feedback {
+            margin-top: 10px;
+            min-height: 24px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .correct {
+            color: #1DB954;
+        }
+        .incorrect {
+            color: #e22134;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Indovina la Canzone 🎵</h1>
+        
+        <div class="score">
+            Punteggio: <span id="score">0</span>
+        </div>
+        
+        <div class="lyrics" id="lyrics"></div>
+        
+        <div class="feedback" id="feedback"></div>
+        
+        <div class="controls">
+            <input type="text" id="guess" placeholder="Inserisci il titolo della canzone...">
+            <button id="submit">Indovina</button>
+            <button id="new-song">Nuova Canzone</button>
+            <button id="reveal">Rivela Risposta</button>
+        </div>
+    </div>
+
+    <!-- PyScript per eseguire Python nel browser -->
+    <script type="py" src="./game_logic.py"></script>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+
+    <!-- Alternativa: Versione con JavaScript puro -->
+    <script>
+        // Dati di esempio (nella realtà verrebbero dal backend)
+        const songs = [
+            {
+                title: "Bohemian Rhapsody",
+                artist: "Queen",
+                lyrics: "Mama, just killed a man\nPut a gun against his head\nPulled my trigger, now he's dead\nMama, life had just begun"
+            },
+            {
+                title: "Imagine",
+                artist: "John Lennon",
+                lyrics: "Imagine there's no heaven\nIt's easy if you try\nNo hell below us\nAbove us only sky"
+            }
+        ];
+
+        let currentSong = null;
+        let score = 0;
+
+        // Elementi DOM
+        const lyricsEl = document.getElementById('lyrics');
+        const guessEl = document.getElementById('guess');
+        const submitBtn = document.getElementById('submit');
+        const newSongBtn = document.getElementById('new-song');
+        const revealBtn = document.getElementById('reveal');
+        const scoreEl = document.getElementById('score');
+        const feedbackEl = document.getElementById('feedback');
+
+        // Funzioni
+        function getRandomSong() {
+            return songs[Math.floor(Math.random() * songs.length)];
+        }
+
+        function displaySong() {
+            currentSong = getRandomSong();
+            const lines = currentSong.lyrics.split('\n').slice(0, 4);
+            lyricsEl.textContent = lines.join('\n');
+            guessEl.value = '';
+            feedbackEl.textContent = '';
+            feedbackEl.className = 'feedback';
+        }
+
+        function checkGuess() {
+            const userGuess = guessEl.value.trim().toLowerCase();
+            const correctAnswer = currentSong.title.toLowerCase();
+
+            if (userGuess === correctAnswer) {
+                score++;
+                scoreEl.textContent = score;
+                feedbackEl.textContent = 'Esatto! ✅';
+                feedbackEl.className = 'feedback correct';
+            } else {
+                feedbackEl.textContent = 'Sbagliato! ❌';
+                feedbackEl.className = 'feedback incorrect';
+            }
+        }
+
+        function revealAnswer() {
+            feedbackEl.textContent = `La canzone era: ${currentSong.title} - ${currentSong.artist}`;
+            feedbackEl.className = 'feedback';
+        }
+
+        // Event listeners
+        newSongBtn.addEventListener('click', displaySong);
+        submitBtn.addEventListener('click', checkGuess);
+        revealBtn.addEventListener('click', revealAnswer);
+
+        // Inizia il gioco
+        displaySong();
+    </script>
+</body>
+</html>
