@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Indovina la Canzone</title>
+</head>
+<body>
+    <h1>🎵 INDOVINA LA CANZONE 🎵</h1>
+
+    <div id="score">Punteggio: 0</div>
+
+    <div id="artist-selection">
+        <input type="text" id="artist-input" placeholder="Cerca un artista">
+        <button id="search-artist">Cerca</button>
+    </div>
+
+    <div id="game-area" style="display:none;">
+        <div id="lyrics" style="margin: 20px 0; font-style: italic;"></div>
+
+        <select id="songs-dropdown">
+            <option value="">Scegli la canzone</option>
+        </select>
+
+        <button id="submit-guess">Verifica</button>
+        <div id="result" style="margin-top: 20px;"></div>
+        <button id="new-round" style="display:none;">Nuova Partita</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let currentSong = null;
+        let allSongs = [];
+
+        document.getElementById('search-artist').addEventListener('click', async () => {
+            const artist = document.getElementById('artist-input').value.trim();
+            if (!artist) return;
+
+            const response = await fetch(`/get_songs?artist=${encodeURIComponent(artist)}`);
+            const songs = await response.json();
+
+            if (songs.error || songs.length === 0) {
+                alert("Nessuna canzone trovata.");
+                return;
+            }
+
+            allSongs = songs;
+
+            // Scegli una canzone a caso
+            currentSong = songs[Math.floor(Math.random() * songs.length)];
+
+            // Prendi il testo
+            const lyricsRes = await fetch(`/get_lyrics?song=${encodeURIComponent(currentSong.title)}&artist=${encodeURIComponent(currentSong.artist)}`);
+            const data = await lyricsRes.json();
+            const lines = data.lyrics.split('\n').filter(line => line.trim() !== '');
+
+            // Scegli 4 righe consecutive a caso
+            let start = Math.floor(Math.random() * (lines.length - 3));
+            const snippet = lines.slice(start, start + 4).join('<br>');
+
+            document.getElementById('lyrics').innerHTML = `"${snippet}"`;
+
+            // Riempie il select con le canzoni
+            const dropdown = document.getElementById('songs-dropdown');
+            dropdown.innerHTML = '<option value="">Scegli la canzone</option>';
+            songs.forEach(song => {
+                const option = document.createElement('option');
+                option.value = song.title;
+                option.textContent = `${song.title} (${song.album})`;
+                dropdown.appendChild(option);
+            });
+
+            document.getElementById('game-area').style.display = 'block';
+        });
+
+        document.getElementById('submit-guess').addEventListener('click', () => {
+            const guess = document.getElementById('songs-dropdown').value;
+            const result = document.getElementById('result');
+
+            if (!guess) return;
+
+            if (guess.toLowerCase() === currentSong.title.toLowerCase()) {
+                score += 10;
+                result.textContent = `✅ Esatto! Era "${currentSong.title}" (+10 punti)`;
+                result.style.color = 'green';
+            } else {
+                result.textContent = `❌ Sbagliato. Era "${currentSong.title}"`;
+                result.style.color = 'red';
+            }
+
+            document.getElementById('score').textContent = `Punteggio: ${score}`;
+            document.getElementById('new-round').style.display = 'inline';
+        });
+
+        document.getElementById('new-round').addEventListener('click', () => {
+            document.getElementById('game-area').style.display = 'none';
+            document.getElementById('result').textContent = '';
+            document.getElementById('new-round').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
