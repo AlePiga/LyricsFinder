@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Indovina la Canzone</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>🎵 INDOVINA LA CANZONE 🎵</h1>
-
+    <h1>Songle Early Betatest</h1>
+    <h2>Featuring the APIs of Spotify and Genius</h2>
     <div id="score">Punteggio: 0</div>
 
     <div id="artist-selection">
@@ -16,6 +19,8 @@
 
     <div id="game-area" style="display:none;">
         <div id="lyrics" style="margin: 20px 0; font-style: italic;"></div>
+        <button id="show-more-lyrics" style="display:none;">Mostra un'altra riga</button>
+        <div id="more-lyrics" style="margin: 20px 0; font-style: italic;"></div>
 
         <select id="songs-dropdown">
             <option value="">Scegli la canzone</option>
@@ -30,53 +35,173 @@
         let score = 0;
         let currentSong = null;
         let allSongs = [];
+        let allLyricsLines = [];
+        let currentLyricsIndex = 0;
+        let shownLines = 4;
+
+        // Funzione per pulire il select rimuovendo duplicati
+        function cleanSelect(dropdown) {
+            const options = dropdown.options;
+            const uniqueValues = new Set();
+            const optionTexts = new Set();
+            
+            // Partiamo da 1 per saltare l'opzione predefinita
+            for (let i = 1; i < options.length; i++) {
+                const text = options[i].textContent.toLowerCase();
+                if (optionTexts.has(text)) {
+                    dropdown.remove(i);
+                    i--; // Decrementiamo perché abbiamo rimosso un elemento
+                } else {
+                    optionTexts.add(text);
+                }
+            }
+        }
 
         document.getElementById('search-artist').addEventListener('click', async () => {
             const artist = document.getElementById('artist-input').value.trim();
-            if (!artist) return;
-
-            const response = await fetch(`/get_songs?artist=${encodeURIComponent(artist)}`);
-            const songs = await response.json();
-
-            if (songs.error || songs.length === 0) {
-                alert("Nessuna canzone trovata.");
+            if (!artist) {
+                alert("Per favore inserisci il nome di un artista");
                 return;
             }
 
-            allSongs = songs;
+            try {
+                const response = await fetch(`/get_songs?artist=${encodeURIComponent(artist)}`);
+                if (!response.ok) throw new Error("Errore nella richiesta");
+                
+                const songs = await response.json();
 
-            // Scegli una canzone a caso
-            currentSong = songs[Math.floor(Math.random() * songs.length)];
+                if (songs.error || !songs.length) {
+                    alert("Nessuna canzone trovata per questo artista.");
+                    return;
+                }
 
-            // Prendi il testo
-            const lyricsRes = await fetch(`/get_lyrics?song=${encodeURIComponent(currentSong.title)}&artist=${encodeURIComponent(currentSong.artist)}`);
-            const data = await lyricsRes.json();
-            const lines = data.lyrics.split('\n').filter(line => line.trim() !== '');
+                // Filtra le canzoni rimuovendo remix, acapella e live
+                allSongs = songs.filter(song => {
+                    const lowerTitle = song.title.toLowerCase();
+                    return !lowerTitle.includes('remix') && 
+                           !lowerTitle.includes('acapella') && 
+                           !lowerTitle.includes('a cappella') && 
+                           !lowerTitle.includes('live') &&
+                           !lowerTitle.includes('instrumental') &&
+                           !lowerTitle.includes('hooligans version') && // schyeah
+                           !lowerTitle.includes('version') &&
+                           !lowerTitle.includes('acoustic') &&
+                           !lowerTitle.includes('world tour') && // blackpink
+                           !lowerTitle.includes('arena tour') && // blackpink
+                           !lowerTitle.includes('jp ver') && // blackpink
+                           !lowerTitle.includes('remastered');
+                });
 
-            // Scegli 4 righe consecutive a caso
-            let start = Math.floor(Math.random() * (lines.length - 3));
-            const snippet = lines.slice(start, start + 4).join('<br>');
+                if (allSongs.length === 0) {
+                    alert("Nessuna canzone valida trovata dopo il filtraggio.");
+                    return;
+                }
 
+                // Ordina le canzoni in ordine alfabetico
+                allSongs.sort((a, b) => a.title.localeCompare(b.title));
+
+                // Scegli una canzone a caso
+                currentSong = allSongs[Math.floor(Math.random() * allSongs.length)];
+
+                // Prendi il testo
+                const lyricsRes = await fetch(`/get_lyrics?song=${encodeURIComponent(currentSong.title)}&artist=${encodeURIComponent(currentSong.artist)}`);
+                if (!lyricsRes.ok) throw new Error("Errore nel recupero del testo");
+                
+                const data = await lyricsRes.json();
+                if (!data.lyrics) {
+                    alert("Testo non disponibile per questa canzone");
+                    return;
+                }
+
+                allLyricsLines = data.lyrics.split('\n').filter(line => line.trim() !== '');
+                if (allLyricsLines.length === 0) {
+                    alert("Testo vuoto o non valido");
+                    return;
+                }
+
+                currentLyricsIndex = 0;
+                shownLines = 4;
+
+                // Mostra le prime righe
+                showLyricsLines();
+
+                // Riempie il select con le canzoni ordinate
+                const dropdown = document.getElementById('songs-dropdown');
+                dropdown.innerHTML = '<option value="">Scegli la canzone</option>';
+                allSongs.forEach(song => {
+                    const option = document.createElement('option');
+                    option.value = song.title;
+                    option.textContent = song.title;
+                    dropdown.appendChild(option);
+                });
+
+                // Pulisci il select dai duplicati
+                cleanSelect(dropdown);
+
+                document.getElementById('game-area').style.display = 'block';
+                document.getElementById('show-more-lyrics').style.display = 'inline';
+                document.getElementById('more-lyrics').innerHTML = '';
+                document.getElementById('result').textContent = '';
+
+            } catch (error) {
+                console.error("Errore:", error);
+                alert("Si è verificato un errore. Per favore riprova.");
+            }
+        });
+
+        function showLyricsLines() {
+            if (allLyricsLines.length === 0) return;
+            
+            // Calcola l'indice massimo di partenza possibile
+            const maxStart = Math.max(0, allLyricsLines.length - shownLines);
+            currentLyricsIndex = Math.min(currentLyricsIndex, maxStart);
+            
+            // Mostra le righe a partire dall'indice corrente
+            const snippet = allLyricsLines.slice(currentLyricsIndex, currentLyricsIndex + shownLines).join('<br>');
             document.getElementById('lyrics').innerHTML = `"${snippet}"`;
+        }
+    
+        document.getElementById('show-more-lyrics').addEventListener('click', () => {
+            // Incrementa il numero di righe da mostrare
+            shownLines++;
+            
+            // Se stiamo mostrando più righe di quelle disponibili a partire dall'indice corrente
+            if (currentLyricsIndex + shownLines > allLyricsLines.length) {
+                // Sposta l'indice all'indietro per mostrare il numero richiesto di righe
+                currentLyricsIndex = Math.max(0, allLyricsLines.length - shownLines);
+            }
+            
+            // Mostra le righe aggiornate
+            showLyricsLines();
+            
+            // Disabilita il pulsante se non ci sono più righe da mostrare
+            if (currentLyricsIndex + shownLines >= allLyricsLines.length) {
+                document.getElementById('show-more-lyrics').disabled = true;
+            }
+        });
 
-            // Riempie il select con le canzoni
-            const dropdown = document.getElementById('songs-dropdown');
-            dropdown.innerHTML = '<option value="">Scegli la canzone</option>';
-            songs.forEach(song => {
-                const option = document.createElement('option');
-                option.value = song.title;
-                option.textContent = `${song.title} (${song.album})`;
-                dropdown.appendChild(option);
-            });
-
-            document.getElementById('game-area').style.display = 'block';
+        document.getElementById('show-more-lyrics').addEventListener('click', () => {
+            shownLines++;
+            showLyricsLines();
+            
+            // Aggiungi una riga aggiuntiva sotto se disponibile
+            const nextLineIndex = currentLyricsIndex + shownLines;
+            if (nextLineIndex < allLyricsLines.length) {
+                document.getElementById('more-lyrics').innerHTML += `${allLyricsLines[nextLineIndex]}<br>`;
+            } else {
+                document.getElementById('show-more-lyrics').disabled = true;
+            }
         });
 
         document.getElementById('submit-guess').addEventListener('click', () => {
             const guess = document.getElementById('songs-dropdown').value;
             const result = document.getElementById('result');
 
-            if (!guess) return;
+            if (!guess) {
+                result.textContent = "Per favore seleziona una canzone";
+                result.style.color = 'orange';
+                return;
+            }
 
             if (guess.toLowerCase() === currentSong.title.toLowerCase()) {
                 score += 10;
@@ -89,12 +214,16 @@
 
             document.getElementById('score').textContent = `Punteggio: ${score}`;
             document.getElementById('new-round').style.display = 'inline';
+            document.getElementById('show-more-lyrics').style.display = 'none';
         });
 
         document.getElementById('new-round').addEventListener('click', () => {
             document.getElementById('game-area').style.display = 'none';
+            document.getElementById('artist-input').value = '';
             document.getElementById('result').textContent = '';
             document.getElementById('new-round').style.display = 'none';
+            document.getElementById('more-lyrics').innerHTML = '';
+            document.getElementById('show-more-lyrics').disabled = false;
         });
     </script>
 </body>
