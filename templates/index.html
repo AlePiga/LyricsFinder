@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="it">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>LyricsFinder</title>
+		<link rel="stylesheet" href="../static/style.css"/>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							spotify: {
+								green: "#1db954",
+								light: "#1ed760",
+								dark: "#15883e",
+							},
+						},
+					},
+				},
+			};
+		</script>
+		<style type="text/tailwindcss">
+			@keyframes spin {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+			.animate-spin-custom {
+				animation: spin 1s linear infinite;
+			}
+		</style>
+	</head>
+	<body class="select-none bg-gray-100 font-sans text-gray-800 antialiased">
+		<div class="max-w-3xl mx-auto p-5">
+			<header class="text-center mb-8 py-5">
+				<h1 class="text-5xl font-bold text-spotify-green mb-4">
+					LyricsFinder
+				</h1>
+				<p class="text-gray-600">
+					Trova il testo completo delle tue canzoni preferite.<br />Creato da
+					Piga con <b>LyricsGenius API.</b>
+				</p>
+			</header>
+
+			<div class="flex flex-wrap gap-3 mb-8 justify-center">
+				<div class="flex-1 min-w-[200px]">
+					<input
+						type="text"
+						id="song-title"
+						placeholder="Titolo della canzone"
+						required
+						class="w-full px-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-spotify-green focus:border-transparent transition"
+					/>
+				</div>
+				<div class="flex-1 min-w-[200px]">
+					<input
+						type="text"
+						id="artist-name"
+						placeholder="Nome dell'artista"
+						required
+						class="w-full px-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-spotify-green focus:border-transparent transition"
+					/>
+				</div>
+				<button
+					id="search-button"
+					class="bg-spotify-green hover:bg-spotify-light text-white font-medium py-3 px-6 rounded-md transition-colors duration-300"
+				>
+					Cerca
+				</button>
+			</div>
+
+			<div id="loading" class="hidden text-center my-8">
+				<div
+					class="w-10 h-10 mx-auto mb-4 border-4 border-gray-200 border-t-spotify-green rounded-full animate-spin-custom"
+				></div>
+				<p>Ricerca in corso...</p>
+			</div>
+
+			<div
+				id="error-message"
+				class="hidden bg-red-50 text-red-700 p-4 rounded-md mb-5 text-center"
+			></div>
+			<div
+				id="result-container"
+				class="hidden bg-white rounded-lg shadow-md overflow-hidden"
+			>
+				<div
+					class="flex flex-col md:flex-row p-5 bg-gray-50 border-b border-gray-200"
+				>
+					<div
+						class="w-[150px] h-[150px] mx-auto md:mx-0 mb-5 md:mb-0 md:mr-5 flex-shrink-0"
+					>
+						<img
+							id="album-image"
+							src=""
+							alt="Copertina album"
+							class="w-full h-full object-cover rounded-md shadow-md draggable="
+						/>
+					</div>
+					<div class="flex flex-col justify-center text-center md:text-left">
+						<h2
+							id="song-title-display"
+							class="text-2xl font-bold text-gray-800 mb-1"
+						></h2>
+						<h3
+							id="artist-name-display"
+							class="text-xl text-gray-600 mb-2"
+						></h3>
+						<p id="album-name-display" class="text-gray-500"></p>
+					</div>
+				</div>
+				<div class="p-6">
+					<h3
+						class="text-xl font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200"
+					>
+						Testo
+					</h3>
+					<div
+						id="lyrics"
+						class="whitespace-pre-line leading-relaxed text-lg"
+					></div>
+				</div>
+			</div>
+
+			<!-- CRONOLOGIA RICERCHE CON STILE COERENTE -->
+			<section id="history-section" class="mb-8 mt-8">
+				<h2
+					class="text-xl font-bold mb-3 text-gray-700 flex items-center gap-2 px-6"
+				>
+					<svg
+						class="w-5 h-5 text-spotify-green"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					Cronologia ricerche
+				</h2>
+				<div class="bg-white rounded-lg shadow-md overflow-hidden">
+					<ul id="history-list" class="divide-y divide-gray-200">
+						<!-- Le ricerche verranno inserite qui -->
+					</ul>
+				</div>
+			</section>
+		</div>
+
+		<script>
+			document.addEventListener("DOMContentLoaded", () => {
+				const songTitleInput = document.getElementById("song-title");
+				const artistNameInput = document.getElementById("artist-name");
+				const searchButton = document.getElementById("search-button");
+				const loadingElement = document.getElementById("loading");
+				const errorMessageElement = document.getElementById("error-message");
+				const resultContainer = document.getElementById("result-container");
+				const albumImageElement = document.getElementById("album-image");
+				const songTitleDisplay = document.getElementById("song-title-display");
+				const artistNameDisplay = document.getElementById(
+					"artist-name-display"
+				);
+				const albumNameDisplay = document.getElementById("album-name-display");
+				const lyricsElement = document.getElementById("lyrics");
+
+				// Funzione per mostrare un messaggio di errore
+				function showError(message) {
+					errorMessageElement.textContent = message;
+					errorMessageElement.classList.remove("hidden");
+					resultContainer.classList.add("hidden");
+					loadingElement.classList.add("hidden");
+				}
+
+				// Funzione per cercare la canzone
+				async function searchSong() {
+					const songTitle = songTitleInput.value.trim();
+					const artistName = artistNameInput.value.trim();
+
+					if (!songTitle || !artistName) {
+						showError(
+							"Per favore, inserisci sia il titolo della canzone che il nome dell'artista."
+						);
+						return;
+					}
+
+					// Nascondi eventuali risultati o errori precedenti
+					resultContainer.classList.add("hidden");
+					errorMessageElement.classList.add("hidden");
+
+					// Mostra l'indicatore di caricamento
+					loadingElement.classList.remove("hidden");
+
+					try {
+						const response = await fetch(
+							`/search_song?title=${encodeURIComponent(
+								songTitle
+							)}&artist=${encodeURIComponent(artistName)}`
+						);
+						const data = await response.json();
+
+						// Nascondi l'indicatore di caricamento
+						loadingElement.classList.add("hidden");
+
+						if (response.ok) {
+							// Mostra i risultati
+							songTitleDisplay.textContent = data.title;
+							artistNameDisplay.textContent = data.artist;
+							albumNameDisplay.textContent = `Album: ${data.album}`;
+							lyricsElement.textContent = data.lyrics;
+
+							// Imposta l'immagine dell'album se disponibile
+							if (data.album_image) {
+								albumImageElement.src = data.album_image;
+								albumImageElement.alt = `Copertina di ${data.album}`;
+							} else {
+								// Immagine placeholder se non disponibile
+								albumImageElement.src =
+									"https://via.placeholder.com/150?text=No+Image";
+								albumImageElement.alt = "Copertina non disponibile";
+							}
+
+							resultContainer.classList.remove("hidden");
+						} else {
+							showError(
+								data.error ||
+									"Si è verificato un errore durante la ricerca della canzone."
+							);
+						}
+					} catch (error) {
+						console.error("Error:", error);
+						showError(
+							"Si è verificato un errore di connessione. Riprova più tardi."
+						);
+					}
+				}
+
+				// Funzione per ottenere la cronologia dal localStorage
+				function getHistory() {
+					return JSON.parse(localStorage.getItem("searchHistory") || "[]");
+				}
+
+				// Funzione per salvare una nuova ricerca
+				function saveToHistory(song, artist) {
+					const history = getHistory();
+					const now = new Date();
+					history.unshift({
+						song,
+						artist,
+						datetime: now.toLocaleString("it-IT", { hour12: false }),
+					});
+					// Limita la cronologia a 10 elementi
+					localStorage.setItem(
+						"searchHistory",
+						JSON.stringify(history.slice(0, 10))
+					);
+				}
+
+				// Funzione per rimuovere una voce dalla cronologia
+				function removeFromHistory(index) {
+					const history = getHistory();
+					history.splice(index, 1);
+					localStorage.setItem("searchHistory", JSON.stringify(history));
+					renderHistory();
+				}
+
+				// Funzione per mostrare la cronologia
+				function renderHistory() {
+					const history = getHistory();
+					const list = document.getElementById("history-list");
+					list.innerHTML = "";
+					if (history.length === 0) {
+						list.innerHTML = `<li class="p-4 text-gray-400 text-center">Nessuna ricerca recente.</li>`;
+						return;
+					}
+					history.forEach((item, idx) => {
+						const li = document.createElement("li");
+						li.className =
+							"flex flex-col md:flex-row md:items-center justify-between p-4 hover:bg-gray-50 transition group";
+						li.innerHTML = `
+							<div>
+								<span class="font-semibold text-spotify-green">${item.song}</span>
+								<span class="text-gray-500">di</span>
+								<span class="font-medium text-gray-700">${item.artist}</span>
+							</div>
+							<div class="flex items-center gap-3 mt-2 md:mt-0">
+								<span class="text-sm text-gray-400">${item.datetime}</span>
+								<button title="Rimuovi"
+									class="ml-2 text-red-500 hover:text-white hover:bg-red-500 rounded-full w-7 h-7 flex items-center justify-center transition"
+									data-index="${idx}">
+									<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+									</svg>
+								</button>
+							</div>
+						`;
+						list.appendChild(li);
+					});
+
+					// Aggiungi event listener ai bottoni X
+					list.querySelectorAll("button[data-index]").forEach((btn) => {
+						btn.addEventListener("click", (e) => {
+							e.stopPropagation();
+							const idx = parseInt(btn.getAttribute("data-index"));
+							removeFromHistory(idx);
+						});
+					});
+				}
+
+				// Modifica la funzione di ricerca per salvare la cronologia
+				searchButton.addEventListener("click", function () {
+					const song = songTitleInput.value.trim();
+					const artist = artistNameInput.value.trim();
+					if (!song || !artist) return;
+					saveToHistory(song, artist);
+					renderHistory();
+					searchSong();
+				});
+
+				// Event listener per la pressione del tasto Enter nei campi di input
+				songTitleInput.addEventListener("keypress", (e) => {
+					if (e.key === "Enter") searchSong();
+				});
+
+				artistNameInput.addEventListener("keypress", (e) => {
+					if (e.key === "Enter") searchSong();
+				});
+
+				// Mostra la cronologia al caricamento della pagina
+				renderHistory();
+			});
+		</script>
+	</body>
+</html>
