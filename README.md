@@ -5,8 +5,8 @@ Un'applicazione web realizzata con Flask che consente di cercare una canzone su 
 ## Requisiti
 
 * Python 3.8+
-* Un account Spotify Developer
-* Un account Genius API
+* Un account Spotify
+* Un account Genius
 
 ## Funzionalità
 
