@@ -10,11 +10,11 @@ Un'applicazione web realizzata con Flask che consente di cercare una canzone su 
 
 ## Funzionalità
 
-* Ricerca brani su Spotify (titolo + artista)
+* Ricerca dei brani su Spotify, forniti titolo e artista
 * Recupero automatico della copertina dell'album
-* Estrazione e pulizia dei testi da Genius.com
+* Estrazione e pulizia dei testi da Genius
 * API di ricerca con risposta in formato JSON
-* Interfaccia web semplice via `index.html`
+* Interfaccia web clean e moderna via
 
 ## Installazione
 
